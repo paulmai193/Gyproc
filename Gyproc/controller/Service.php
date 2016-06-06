@@ -66,7 +66,7 @@ $app->get ( '/user(/)(:type/?)(:id/?)', function ($type = null, $id = null) {
 } );
 
 // Add new user
-$app->post ( '/info/add', function () use($app) {
+$app->post ( '/info/add', function () use ($app) {
 	$content = json_decode ( $app->request ()->getBody (), true );
 	$user = $content ['user'];
 	$device = $content ['device'];
@@ -114,15 +114,15 @@ $app->post ( '/info/add', function () use($app) {
 } );
 
 // Synchronize data from server by version
-$app->get ( '/sync', function () use($app) {
+$app->get ( '/sync', function () use ($app) {
 	$ver_source = $app->request ()->params ( 'source' );
-// 	$ver_filter = $app->request ()->params ( 'filter' );
+	// $ver_filter = $app->request ()->params ( 'filter' );
 
 	$response = array ();
 	try {
 		$cur_ver = MySqlConnection::$database->select ( 'versioninfo', '*' );
 		$cur_ver_source = $cur_ver [0] ['source'];
-// 		$cur_ver_filter = $cur_ver [0] ['filter'];
+		// $cur_ver_filter = $cur_ver [0] ['filter'];
 		if ($ver_source != $cur_ver_source) {
 			$datasource = MySqlConnection::$database->select ( 'wp_postmeta', '*' );
 			$source = array ();
@@ -142,9 +142,9 @@ $app->get ( '/sync', function () use($app) {
 			$response ['source'] = $source;
 		}
 
-// 		if ($ver_filter != $cur_ver_filter) {
-// 			$response ['filter'] = "http://path/to/this/filter/xml";
-// 		}
+		// if ($ver_filter != $cur_ver_filter) {
+		// $response ['filter'] = "http://path/to/this/filter/xml";
+		// }
 
 		$response ['version'] = $cur_ver;
 		$response ['error'] = false;
@@ -160,40 +160,64 @@ $app->get ( '/sync', function () use($app) {
 } );
 
 // Push new notify to all mobile client
-$app->post ( '/push', function () use($app) {
+$app->post ( '/push', function () use ($app) {
 	// Get title and message of push
 	$title = $app->request ()->post ( 'title' );
 	$msg = $app->request ()->post ( 'message' );
+	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
+	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công / nhà thầu
 
-	// Get all devices info
 	try {
-		$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
-		$list_android = array ();
-		$list_ios = array ();
-		foreach ( $deviceinfo as $value ) {
-			if (strpos ( $value ['os'], 'iphone' ) !== false || strpos ( $value ['os'], 'ipad' ) !== false || strpos ( $value ['os'], 'ios' ) !== false) {
-				array_push ( $list_ios, $value ['push_token'] );
-			} elseif (strpos ( $value ['os'], 'android' ) !== false) {
-				array_push ( $list_android, $value ['push_token'] );
+		// Get devices info base on user filter and role
+		if ($user_filter == 'non_register') {
+			// All device with isn't registered by user
+			$deviceinfo = MySqlConnection::$database->query ( 'select di.* from deviceinfo di where di.id_device not in (select ui.id_device from userinfo ui)' )->fetchAll ();
+		} elseif ($user_filter == 'registered') {
+			// All device with isn't registered by user and filter by role
+			if ($user_role == 'all') {
+				$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
+			} else {
+				$deviceinfo = MySqlConnection::$database->query ( "select di.* from deviceinfo di where di.id_device not in (select ui.id_device from userinfo ui where ui.role like '$user_role')" )->fetchAll ();
 			}
+		} else {
+			// all
+			$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
 		}
+		if (is_array ( $deviceinfo )) {
+			$list_android = array ();
+			$list_ios = array ();
+			foreach ( $deviceinfo as $value ) {
+				if (strpos ( $value ['os'], 'iphone' ) !== false || strpos ( $value ['os'], 'ipad' ) !== false || strpos ( $value ['os'], 'ios' ) !== false) {
+					array_push ( $list_ios, $value ['push_token'] );
+				} elseif (strpos ( $value ['os'], 'android' ) !== false) {
+					array_push ( $list_android, $value ['push_token'] );
+				}
+			}
 
-		// Send push to these devices
-		$push = new iOSPush ( $list_ios, $title, $msg );
-		$result = $push->sendPush ();
+			// Send push to these devices
+			if (sizeof ( $list_ios ) > 0) {
+				$push = new iOSPush ( $list_ios, $title, $msg );
+				$result = $push->sendPush ();
+			}
 
-		$push = new AndroidPush ( $list_android, $title, $msg );
-		$result = $push->sendPush ();
+			if (sizeof ( $list_android ) > 0) {
+				$push = new AndroidPush ( $list_android, $title, $msg );
+				$result = $push->sendPush ();
+			}
 
-		jsonResponse ( 200, 'Success' );
+			jsonResponse ( 200, 'Success' );
+		} else {
+			jsonResponse ( 200, 'Not find any device' );
+		}
+	} catch ( Exception $e ) {
+		$response = array ();
+		$response ['message'] = $e->getMessage ();
+		$response ['detail'] = $e->getTraceAsString ();
+		jsonResponse ( 500, $response );
 	}
-	catch (Exception $e) {
-		jsonResponse ( 500, $e->getMessage() );
-	}
-
 } );
 
-$app->post ( '/push/test/ios', function () use($app) {
+$app->post ( '/push/test/ios', function () use ($app) {
 	$device_token = array (
 			'173ff474b94194519314399115f62aa1ca1b50ca231b1dff5d4ac5f3fab10b06'
 	);
@@ -217,7 +241,7 @@ $app->post ( '/push/test/ios', function () use($app) {
 	}
 } );
 
-$app->post ( '/push/test/android', function () use($app) {
+$app->post ( '/push/test/android', function () use ($app) {
 	$device_token = array (
 			'fTiqVeDhC78:APA91bFn4nnYO55Jsj2_TVFR6fyaHqPcrca3HAHKK2n7G67qJF4OlMPqUe5faXGtouBFqAC5JnYZ-AxaUHmxsETIhjeUlOqouZtCkI8DiVir9Ty3EZ6diliS46tpeyInnPjBwJmuhCn6'
 	);
@@ -241,7 +265,7 @@ $app->post ( '/push/test/android', function () use($app) {
 	}
 } );
 
-$app->put ( '/putSomething', function () use($app) {
+$app->put ( '/putSomething', function () use ($app) {
 
 	$response = array ();
 	$input = $app->request->put ( 'input' ); // reading post params
@@ -260,7 +284,7 @@ $app->put ( '/putSomething', function () use($app) {
 	jsonResponse ( 200, $response );
 } );
 
-$app->delete ( '/deleteSomething', function () use($app) {
+$app->delete ( '/deleteSomething', function () use ($app) {
 
 	$response = array ();
 	$input = $app->request->put ( 'input' ); // reading post params
