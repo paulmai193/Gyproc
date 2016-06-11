@@ -87,13 +87,29 @@ $app->post ( '/info/add', function () use ($app) {
 		} else {
 			$idDevice = $deviceinfo [0] ['id_device'];
 		}
-		// Create user info
-		$user ['id_device'] = $idDevice;
-		// $userinfo = UserInfo::fromArray ( $user );
 
-		$idUser = MySqlConnection::$database->insert ( 'userinfo', $user );
-		if ($idUser == 0) {
-			throw new PDOException ( "Cannot add new user" );
+		// Create / update user info
+		if ($user != null) {
+			// Get user info first
+			$userinfo = MySqlConnection::$database->select ( 'userinfo', "*", array (
+					'email' => $user ['email']
+			) );
+			if (sizeof ( $userinfo ) == 0) {
+				$user ['id_device'] = $idDevice;
+
+				$idUser = MySqlConnection::$database->insert ( 'userinfo', $user );
+				if ($idUser == 0) {
+					throw new PDOException ( "Cannot add new user" );
+				}
+			} else {
+				foreach ( $__array as $key => $value ) {
+					$userinfo->{$key} = $value;
+				}
+				$updateResult = MySqlConnection::$database->update('userinfo', $userinfo);
+				if ($updateResult == false) {
+					throw  new PDOException("Cannot update user info");
+				}
+			}
 		}
 
 		$response ['error'] = false;
@@ -302,6 +318,7 @@ $app->delete ( '/deleteSomething', function () use ($app) {
 	}
 	jsonResponse ( 200, $response );
 } );
+
 function jsonResponse($status_code, $response) {
 	$app = \Slim\Slim::getInstance ();
 	$app->status ( $status_code );
@@ -309,6 +326,7 @@ function jsonResponse($status_code, $response) {
 
 	echo json_encode ( $response );
 }
+
 function xmlResponse($status_code, $filePath) {
 	$app = \Slim\Slim::getInstance ();
 	$app->status ( $status_code );
