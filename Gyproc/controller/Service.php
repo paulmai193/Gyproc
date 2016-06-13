@@ -182,6 +182,7 @@ $app->post ( '/push', function () use ($app) {
 	$msg = $app->request ()->post ( 'message' );
 	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
 	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công / nhà thầu
+	$os_filter = $app->request()->post('os_filter'); // all, ios, android
 
 	try {
 		// Get devices info base on user filter and role
@@ -211,12 +212,12 @@ $app->post ( '/push', function () use ($app) {
 			}
 
 			// Send push to these devices
-			if (sizeof ( $list_ios ) > 0) {
+			if (sizeof ( $list_ios ) > 0 && $os_filter != 'android') {
 				$push = new iOSPush ( $list_ios, $title, $msg );
 				$result = $push->sendPush ();
 			}
 
-			if (sizeof ( $list_android ) > 0) {
+			if (sizeof ( $list_android ) > 0 && $os_filter != 'ios') {
 				$push = new AndroidPush ( $list_android, $title, $msg );
 				$result = $push->sendPush ();
 			}
