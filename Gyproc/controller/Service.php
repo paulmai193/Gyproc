@@ -105,9 +105,9 @@ $app->post ( '/info/add', function () use ($app) {
 				foreach ( $__array as $key => $value ) {
 					$userinfo->{$key} = $value;
 				}
-				$updateResult = MySqlConnection::$database->update('userinfo', $userinfo);
+				$updateResult = MySqlConnection::$database->update ( 'userinfo', $userinfo );
 				if ($updateResult == false) {
-					throw  new PDOException("Cannot update user info");
+					throw new PDOException ( "Cannot update user info" );
 				}
 			}
 		}
@@ -131,36 +131,30 @@ $app->post ( '/info/add', function () use ($app) {
 
 // Synchronize data from server by version
 $app->get ( '/sync', function () use ($app) {
-	$ver_source = $app->request ()->params ( 'source' );
-	// $ver_filter = $app->request ()->params ( 'filter' );
+	$ver_source = $app->request ()->params ( 'version' );
 
-	$response = array ();
+	$response;
 	try {
 		$cur_ver = MySqlConnection::$database->select ( 'versioninfo', '*' );
 		$cur_ver_source = $cur_ver [0] ['source'];
-		// $cur_ver_filter = $cur_ver [0] ['filter'];
 		if ($ver_source != $cur_ver_source) {
-			$datasource = MySqlConnection::$database->select ( 'wp_postmeta', '*' );
-			$source = array ();
-			foreach ( $datasource as $value ) {
-				// get value of post_id from source
-				if (array_key_exists ( 'item_' . $value ['post_id'], $source )) {
-					$post = $source ['item_' . $value ['post_id']];
-				} else {
-					$post = array ();
-				}
-				// Add meta key & value to post
-				$post [$value ['meta_key']] = $value ['meta_value'];
 
-				// push this post to source
-				$source ['item_' . $value ['post_id']] = $post;
+			// get data from url
+			try {
+				$ch = curl_init ();
+				curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/app.php?category=furnitre' );
+				curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+				$result = curl_exec ( $ch );
 			}
-			$response ['source'] = $source;
-		}
+			catch (Exception $e) {
+				$result = "{}";
+			}
+			finally {
+				curl_close ( $ch );
+			}
 
-		// if ($ver_filter != $cur_ver_filter) {
-		// $response ['filter'] = "http://path/to/this/filter/xml";
-		// }
+			$response = json_decode($result, true);
+		}
 
 		$response ['version'] = $cur_ver;
 		$response ['error'] = false;
@@ -181,8 +175,8 @@ $app->post ( '/push', function () use ($app) {
 	$title = $app->request ()->post ( 'title' );
 	$msg = $app->request ()->post ( 'message' );
 	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
-	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công / nhà thầu
-	$os_filter = $app->request()->post('os_filter'); // all, ios, android
+	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công/ nhà thầu
+	$os_filter = $app->request ()->post ( 'os_filter' ); // all, ios, android
 
 	try {
 		// Get devices info base on user filter and role
@@ -319,7 +313,6 @@ $app->delete ( '/deleteSomething', function () use ($app) {
 	}
 	jsonResponse ( 200, $response );
 } );
-
 function jsonResponse($status_code, $response) {
 	$app = \Slim\Slim::getInstance ();
 	$app->status ( $status_code );
@@ -327,7 +320,6 @@ function jsonResponse($status_code, $response) {
 
 	echo json_encode ( $response );
 }
-
 function xmlResponse($status_code, $filePath) {
 	$app = \Slim\Slim::getInstance ();
 	$app->status ( $status_code );

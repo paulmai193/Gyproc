@@ -1,7 +1,6 @@
 <?php
 class VersionInfo {
 	private $source;
-	private $filter;
 	function __construct() {
 	}
 	public static function fromArray($__array) {
@@ -16,13 +15,9 @@ class VersionInfo {
 	public function getSource() {
 		return $this->source;
 	}
-	public function getFilter() {
-		return $this->filter;
-	}
 	public function jsonSerialize() {
 		return array (
-				'source' => $this->source,
-				'filter' => $this->filter
+				'source' => $this->source
 		);
 	}
 }
