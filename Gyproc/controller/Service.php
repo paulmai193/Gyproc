@@ -140,23 +140,19 @@ $app->get ( '/sync', function () use ($app) {
 		if ($ver_source != $cur_ver_source) {
 
 			// get data from url
-			try {
-				$ch = curl_init ();
-				curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/app.php?category=furnitre' );
-				curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-				$result = curl_exec ( $ch );
-			}
-			catch (Exception $e) {
-				$result = "{}";
-			}
-			finally {
-				curl_close ( $ch );
-			}
+			$ch = curl_init ();
+
+			curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/app.php?category=furnitre' );
+			curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+
+			$result = curl_exec ( $ch );
+
+			curl_close ( $ch );
 
 			$response = json_decode($result, true);
 		}
 
-		$response ['version'] = $cur_ver;
+		$response ['version'] = $cur_ver[0]['source'];
 		$response ['error'] = false;
 
 		jsonResponse ( 200, $response );
