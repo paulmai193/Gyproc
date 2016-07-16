@@ -129,8 +129,8 @@ $app->post ( '/info/add', function () use ($app) {
 	}
 } );
 
-// Synchronize data from server by version
-$app->get ( '/sync', function () use ($app) {
+// Synchronize data from server by version (OLD IMPLEMENT)
+$app->get ( '/sync/old', function () use ($app) {
 	$ver_source = $app->request ()->params ( 'version' );
 
 	$response;
@@ -150,24 +150,112 @@ $app->get ( '/sync', function () use ($app) {
 			curl_close ( $ch );
 
 			// Modify response
-			$response = json_decode($result, true);
-			unset($response['resulf']); // Unused
+			$response = json_decode ( $result, true );
+			unset ( $response ['resulf'] ); // Unused
 
-			$time = array();
-			foreach ($response['data'] as $data) {
-				foreach ($data['time'] as $each_time) {
-					array_push($time, $each_time['from']);
+			$time = array ();
+			foreach ( $response ['data'] as $data ) {
+				foreach ( $data ['time'] as $each_time ) {
+					array_push ( $time, $each_time ['from'] );
 				}
 			}
-			for ($i = 0; $i < sizeof($time); $i++) {
-				$response['time_'.$i] = $time[$i];
+			for($i = 0; $i < sizeof ( $time ); $i ++) {
+				$response ['time_' . $i] = $time [$i];
 			}
 
-			unset($response['data']);
-
+			unset ( $response ['data'] );
 		}
 
-		$response ['version'] = $cur_ver[0]['source'];
+		$response ['version'] = $cur_ver [0] ['source'];
+		$response ['error'] = false;
+
+		jsonResponse ( 200, $response );
+	} catch ( Exception $e ) {
+		$response ['error'] = true;
+		$response ['message'] = $e->getMessage ();
+		$response ['detail'] = $e->getTraceAsString ();
+
+		jsonResponse ( 500, $response );
+	}
+} );
+
+// Synchronize data from server by version (NEW IMPLEMENT)
+$app->get ( '/sync', function () use ($app) {
+	$response = array ();
+	try {
+		// get data from url
+		$ch = curl_init ();
+
+		curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/update.php' );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+
+		$result = curl_exec ( $ch );
+
+		curl_close ( $ch );
+
+		// ////////// Work with gyproc response
+		$tmp_response = json_decode ( $result, true );
+
+		// ///// Check version
+		$chk_version = $app->request ()->params ( 'version' );
+		$cur_version = $tmp_response ['version'] ['meta'] + $tmp_response ['version'] ['post'];
+		if ($chk_version != $cur_version) {
+			// ///// Modify response
+			// // Video
+			$tmp_furniture = $tmp_response ['furnitre'];
+			$response ['url_video'] = $tmp_furniture ['url_video'];
+			$tmp_video = array ();
+			foreach ( $tmp_furniture ['data'] as $data ) {
+				$tmp_data = array ();
+				$tmp_data [$data ['type_name']] = array (); // Ex: Phong khach
+				array_push ( $tmp_data [$data ['type_name']], array (
+						'begin' => $data ['time_furnitre']
+				) );
+				foreach ( $data ['time'] as $each_time ) {
+					$tmp_time = array (
+							$each_time ['type'] => $each_time ['from']
+					); // Ex: Chia nho phong => 0
+					array_push ( $tmp_data [$data ['type_name']], $tmp_time );
+				}
+				array_push ( $tmp_video, $tmp_data );
+			}
+			$response ['time_video'] = $tmp_video;
+			unset ( $tmp_furniture );
+			unset ( $tmp_response ['furnitre'] );
+			// // Done video
+
+			// // Webview
+			$tmp_news = $tmp_response ['news'];
+			$tmp_webview = array ();
+			foreach ( $tmp_news ['data'] as $data ) {
+				$tmp_webview [$data ['name']] = $data ['url'];
+			}
+			$response ['webview'] = $tmp_webview;
+			unset ( $tmp_news );
+			unset ( $tmp_response ['news'] );
+			// // Done Webview
+
+			// // Photo
+			$tmp_designroom = $tmp_response ['designroom'];
+			$tmp_photo = array ();
+			foreach ( $tmp_designroom ['data'] as $data ) {
+				foreach ( $data ['next_step_2'] as $step_2 ) {
+					foreach ( $step_2 ['children'] as $children ) {
+						foreach ( $children ['next_step_3'] as $step_3 ) {
+							if ($step_3 ['image'] != null) {
+								array_push ( $tmp_photo, $step_3 ['image'] );
+							}
+						}
+					}
+				}
+			}
+			$response ['photo'] = $tmp_photo;
+			unset ( $tmp_designroom );
+			unset ( $tmp_response ['designroom'] );
+			// // Done photo
+		}
+
+		$response ['version'] = $cur_version;
 		$response ['error'] = false;
 
 		jsonResponse ( 200, $response );
@@ -188,6 +276,7 @@ $app->post ( '/push', function () use ($app) {
 	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
 	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công/ nhà thầu
 	$os_filter = $app->request ()->post ( 'os_filter' ); // all, ios, android
+	$screen_id = $app->request ()->post ( 'screen_id' ); // ID
 
 	try {
 		// Get devices info base on user filter and role
@@ -206,6 +295,10 @@ $app->post ( '/push', function () use ($app) {
 			$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
 		}
 		if (is_array ( $deviceinfo )) {
+			$send_message = array ();
+			$send_message ['message'] = $msg;
+			$send_message ['screen_id'] = $screen_id;
+
 			$list_android = array ();
 			$list_ios = array ();
 			foreach ( $deviceinfo as $value ) {
@@ -218,12 +311,12 @@ $app->post ( '/push', function () use ($app) {
 
 			// Send push to these devices
 			if (sizeof ( $list_ios ) > 0 && $os_filter != 'android') {
-				$push = new iOSPush ( $list_ios, $title, $msg );
+				$push = new iOSPush ( $list_ios, $title, $send_message );
 				$result = $push->sendPush ();
 			}
 
 			if (sizeof ( $list_android ) > 0 && $os_filter != 'ios') {
-				$push = new AndroidPush ( $list_android, $title, $msg );
+				$push = new AndroidPush ( $list_android, $title, $send_message );
 				$result = $push->sendPush ();
 			}
 
@@ -235,54 +328,6 @@ $app->post ( '/push', function () use ($app) {
 		$response = array ();
 		$response ['message'] = $e->getMessage ();
 		$response ['detail'] = $e->getTraceAsString ();
-		jsonResponse ( 500, $response );
-	}
-} );
-
-$app->post ( '/push/test/ios', function () use ($app) {
-	$device_token = array (
-			'173ff474b94194519314399115f62aa1ca1b50ca231b1dff5d4ac5f3fab10b06'
-	);
-	$title = 'Thành cùi bắp';
-	$msg = 'alo alo??';
-	try {
-		$push = new iOSPush ( $device_token, $title, $msg );
-		$result = $push->sendPush ();
-
-		$response = array ();
-		$response ['result'] = $result;
-
-		jsonResponse ( 200, $response );
-	} catch ( Exception $e ) {
-		$response = array ();
-		// $response ['error'] = true;
-		$response ['message'] = $e->getMessage ();
-		$response ['detail'] = $e->getTraceAsString ();
-
-		jsonResponse ( 500, $response );
-	}
-} );
-
-$app->post ( '/push/test/android', function () use ($app) {
-	$device_token = array (
-			'fTiqVeDhC78:APA91bFn4nnYO55Jsj2_TVFR6fyaHqPcrca3HAHKK2n7G67qJF4OlMPqUe5faXGtouBFqAC5JnYZ-AxaUHmxsETIhjeUlOqouZtCkI8DiVir9Ty3EZ6diliS46tpeyInnPjBwJmuhCn6'
-	);
-	$title = 'Alo 1 2 3 4';
-	$msg = 'Chim sẻ đâu trả lời';
-	try {
-		$push = new AndroidPush ( $device_token, $msg, $title, '' );
-		$result = $push->sendPush ();
-
-		$response = array ();
-		$response ['result'] = $result;
-
-		jsonResponse ( 200, $response );
-	} catch ( Exception $e ) {
-		$response = array ();
-		// $response ['error'] = true;
-		$response ['message'] = $e->getMessage ();
-		$response ['detail'] = $e->getTraceAsString ();
-
 		jsonResponse ( 500, $response );
 	}
 } );
