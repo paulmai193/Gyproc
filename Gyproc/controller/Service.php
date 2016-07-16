@@ -149,7 +149,22 @@ $app->get ( '/sync', function () use ($app) {
 
 			curl_close ( $ch );
 
+			// Modify response
 			$response = json_decode($result, true);
+			unset($response['resulf']); // Unused
+
+			$time = array();
+			foreach ($response['data'] as $data) {
+				foreach ($data['time'] as $each_time) {
+					array_push($time, $each_time['from']);
+				}
+			}
+			for ($i = 0; $i < sizeof($time); $i++) {
+				$response['time_'.$i] = $time[$i];
+			}
+
+			unset($response['data']);
+
 		}
 
 		$response ['version'] = $cur_ver[0]['source'];
