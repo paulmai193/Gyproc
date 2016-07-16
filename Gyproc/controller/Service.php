@@ -188,6 +188,7 @@ $app->post ( '/push', function () use ($app) {
 	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
 	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công/ nhà thầu
 	$os_filter = $app->request ()->post ( 'os_filter' ); // all, ios, android
+	$screen_id = $app->request()->post('screen_id'); // ID
 
 	try {
 		// Get devices info base on user filter and role
@@ -206,6 +207,10 @@ $app->post ( '/push', function () use ($app) {
 			$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
 		}
 		if (is_array ( $deviceinfo )) {
+			$send_message = array();
+			$send_message['message'] = $msg;
+			$send_message['screen_id'] = $screen_id;
+
 			$list_android = array ();
 			$list_ios = array ();
 			foreach ( $deviceinfo as $value ) {
@@ -218,12 +223,12 @@ $app->post ( '/push', function () use ($app) {
 
 			// Send push to these devices
 			if (sizeof ( $list_ios ) > 0 && $os_filter != 'android') {
-				$push = new iOSPush ( $list_ios, $title, $msg );
+				$push = new iOSPush ( $list_ios, $title, $send_message );
 				$result = $push->sendPush ();
 			}
 
 			if (sizeof ( $list_android ) > 0 && $os_filter != 'ios') {
-				$push = new AndroidPush ( $list_android, $title, $msg );
+				$push = new AndroidPush ( $list_android, $title, $send_message );
 				$result = $push->sendPush ();
 			}
 
