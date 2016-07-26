@@ -6,15 +6,13 @@ require_once '../model/VersionInfo.php';
 class MySqlConnection {
 	// Initialize
 	public static $database;
-	private static $numTables;
-	function __construct() {
-		self::$numTables = 3;
-	}
+	private static $numTables = 3;
 	// Enjoy
 	public static function connect() {
 		$config = include_once '../define/Config.php';
 		self::$database = new medoo ( $config ['db'] );
-		$count = self::$database->query ( 'SELECT COUNT(*) FROM information_schema.tables WHERE TABLE_SCHEMA = \'gyproc_db\'' )->fetchColumn ();
+		$count = self::$database->query ( 'SELECT COUNT(*) FROM information_schema.tables WHERE TABLE_SCHEMA = \'gyproc_2\' AND TABLE_NAME IN (\'deviceinfo\', \'userinfo\', \'versioninfo\')' )->fetchColumn ();
+
 		if ($count != self::$numTables) {
 			self::initializeDb ();
 		}

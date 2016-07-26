@@ -183,23 +183,29 @@ $app->get ( '/sync/old', function () use ($app) {
 $app->get ( '/sync', function () use ($app) {
 	$response = array ();
 	try {
-		// get data from url
-		$ch = curl_init ();
-
-		curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/update.php' );
-		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-
-		$result = curl_exec ( $ch );
-
-		curl_close ( $ch );
-
-		// ////////// Work with gyproc response
-		$tmp_response = json_decode ( $result, true );
-
 		// ///// Check version
 		$chk_version = $app->request ()->params ( 'version' );
-		$cur_version = $tmp_response ['version'] ['meta'] + $tmp_response ['version'] ['post'];
-		if ($chk_version != $cur_version) {
+		$cur_ver = MySqlConnection::$database->select ( 'versioninfo', '*' );
+		$cur_ver_source = $cur_ver [0] ['source'];
+
+		if ($chk_version != $cur_ver_source) {
+
+			// get data from url
+			$ch = curl_init ();
+
+			curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/update.php' );
+			curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+
+			$result = curl_exec ( $ch );
+
+			curl_close ( $ch );
+
+			// ////////// Work with gyproc response
+			$tmp_response = json_decode ( $result, true );
+
+			// ///// Check version
+			$cur_version = $tmp_response ['version'] ['meta'] + $tmp_response ['version'] ['post'];
+
 			// ///// Modify response
 			// // Video
 			$tmp_furniture = $tmp_response ['furnitre'];
@@ -255,7 +261,7 @@ $app->get ( '/sync', function () use ($app) {
 			// // Done photo
 		}
 
-		$response ['version'] = $cur_version;
+		$response ['version'] = $cur_ver_source;
 		$response ['error'] = false;
 
 		jsonResponse ( 200, $response );
@@ -276,7 +282,7 @@ $app->post ( '/push', function () use ($app) {
 	$user_filter = $app->request ()->post ( 'user_filter' ); // all, registered, non_register
 	$user_role = $app->request ()->post ( 'user_role' ); // all, chủ nhà, kiến trúc sư, nhà phân phối, nhà thi công/ nhà thầu
 	$os_filter = $app->request ()->post ( 'os_filter' ); // all, ios, android
-	$screen_id = $app->request()->post('screen_id'); // ID
+	$screen_id = $app->request ()->post ( 'screen_id' ); // ID
 
 	try {
 		// Get devices info base on user filter and role
@@ -295,9 +301,9 @@ $app->post ( '/push', function () use ($app) {
 			$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
 		}
 		if (is_array ( $deviceinfo )) {
-			$send_message = array();
-			$send_message['message'] = $msg;
-			$send_message['screen_id'] = $screen_id;
+			$send_message = array ();
+			$send_message ['message'] = $msg;
+			$send_message ['screen_id'] = $screen_id;
 
 			$list_android = array ();
 			$list_ios = array ();
