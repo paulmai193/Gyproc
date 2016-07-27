@@ -66,7 +66,7 @@ $app->get ( '/user(/)(:type/?)(:id/?)', function ($type = null, $id = null) {
 } );
 
 // Add new user
-$app->post ( '/info/add', function () use($app) {
+$app->post ( '/info/add', function () use ($app) {
 	$content = json_decode ( $app->request ()->getBody (), true );
 	$user = $content ['user'];
 	$device = $content ['device'];
@@ -85,8 +85,11 @@ $app->post ( '/info/add', function () use($app) {
 				throw new PDOException ( "Cannot add new device" );
 			}
 		} else {
+			foreach ( $device as $key => $value ) {
+				$deviceinfo [0] [$key] = $value;
+			}
 			// Update current information to this device
-			MySqlConnection::$database->update ( 'deviceinfo', $deviceinfo, array (
+			MySqlConnection::$database->update ( 'deviceinfo', $deviceinfo [0], array (
 					'uuid' => $device ['uuid']
 			) );
 			$idDevice = $deviceinfo [0] ['id_device'];
@@ -106,10 +109,10 @@ $app->post ( '/info/add', function () use($app) {
 					throw new PDOException ( "Cannot add new user" );
 				}
 			} else {
-				foreach ( $__array as $key => $value ) {
-					$userinfo->{$key} = $value;
+				foreach ( $user as $key => $value ) {
+					$userinfo [0] [$key] = $value;
 				}
-				$updateResult = MySqlConnection::$database->update ( 'userinfo', $userinfo );
+				$updateResult = MySqlConnection::$database->update ( 'userinfo', $userinfo [0] );
 				if ($updateResult == false) {
 					throw new PDOException ( "Cannot update user info" );
 				}
@@ -134,7 +137,7 @@ $app->post ( '/info/add', function () use($app) {
 } );
 
 // Synchronize data from server by version (OLD IMPLEMENT)
-$app->get ( '/sync/old', function () use($app) {
+$app->get ( '/sync/old', function () use ($app) {
 	$ver_source = $app->request ()->params ( 'version' );
 
 	$response;
@@ -184,7 +187,7 @@ $app->get ( '/sync/old', function () use($app) {
 } );
 
 // Synchronize data from server by version (NEW IMPLEMENT)
-$app->get ( '/sync', function () use($app) {
+$app->get ( '/sync', function () use ($app) {
 	$response = array ();
 	try {
 		// ///// Check version
@@ -254,6 +257,7 @@ $app->get ( '/sync', function () use($app) {
 						foreach ( $children ['next_step_3'] as $step_3 ) {
 							if ($step_3 ['image'] != null) {
 								array_push ( $tmp_photo, $step_3 ['image'] );
+								$tmp_photo [$step_3 ['key']] = $step_3 ['image'];
 							}
 						}
 					}
@@ -279,7 +283,7 @@ $app->get ( '/sync', function () use($app) {
 } );
 
 // Push new notify to all mobile client
-$app->post ( '/push', function () use($app) {
+$app->post ( '/push', function () use ($app) {
 	// Get title and message of push
 	$title = $app->request ()->post ( 'title' );
 	$msg = $app->request ()->post ( 'message' );
@@ -342,7 +346,7 @@ $app->post ( '/push', function () use($app) {
 	}
 } );
 
-$app->put ( '/putSomething', function () use($app) {
+$app->put ( '/putSomething', function () use ($app) {
 
 	$response = array ();
 	$input = $app->request->put ( 'input' ); // reading post params
@@ -361,7 +365,7 @@ $app->put ( '/putSomething', function () use($app) {
 	jsonResponse ( 200, $response );
 } );
 
-$app->delete ( '/deleteSomething', function () use($app) {
+$app->delete ( '/deleteSomething', function () use ($app) {
 
 	$response = array ();
 	$input = $app->request->put ( 'input' ); // reading post params
