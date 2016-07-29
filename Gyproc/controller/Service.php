@@ -241,7 +241,11 @@ $app->get ( '/sync', function () use ($app) {
 			$tmp_news = $tmp_response ['news'];
 			$tmp_webview = array ();
 			foreach ( $tmp_news ['data'] as $data ) {
-				$tmp_webview [$data ['name']] = $data ['url'];
+				$tmp_url = array ();
+				$tmp_url [$data ['name']] = $data ['url'];
+
+				array_push ( $tmp_webview, $tmp_url );
+				// $tmp_webview [$data ['name']] = $data ['url'];
 			}
 			$response ['webview'] = $tmp_webview;
 			unset ( $tmp_news );
@@ -256,8 +260,11 @@ $app->get ( '/sync', function () use ($app) {
 					foreach ( $step_2 ['children'] as $children ) {
 						foreach ( $children ['next_step_3'] as $step_3 ) {
 							if ($step_3 ['image'] != null) {
-								array_push ( $tmp_photo, $step_3 ['image'] );
-								$tmp_photo [$step_3 ['key']] = $step_3 ['image'];
+
+								$tmp_image = array ();
+								$tmp_image [$step_3 ['key']] = $step_3 ['image'];
+								array_push ( $tmp_photo, $tmp_image );
+								// $tmp_photo [$step_3 ['key']] = $step_3 ['image'];
 							}
 						}
 					}
@@ -327,11 +334,13 @@ $app->post ( '/push', function () use ($app) {
 			if (sizeof ( $list_ios ) > 0 && $os_filter != 'android') {
 				$push = new iOSPush ( $list_ios, $title, $send_message );
 				$result = $push->sendPush ();
+				var_dump($result);
 			}
 
 			if (sizeof ( $list_android ) > 0 && $os_filter != 'ios') {
 				$push = new AndroidPush ( $list_android, $title, $send_message );
 				$result = $push->sendPush ();
+				var_dump($result);
 			}
 
 			jsonResponse ( 200, 'Success' );
