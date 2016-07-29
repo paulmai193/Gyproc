@@ -219,18 +219,14 @@ $app->get ( '/sync', function () use ($app) {
 			$response ['url_video'] = $tmp_furniture ['url_video'];
 			$tmp_video = array ();
 			foreach ( $tmp_furniture ['data'] as $data ) {
-				$tmp_data = array ();
-				$tmp_data [$data ['type_name']] = array (); // Ex: Phong khach
-				array_push ( $tmp_data [$data ['type_name']], array (
-						'begin' => $data ['time_furnitre']
-				) );
+				$tmp_video [$data ['type_name']] = array (); // Ex: Phong khach
+				$tmp_video [$data ['type_name']] ['begin'] = $data ['time_furnitre'];
 				foreach ( $data ['time'] as $each_time ) {
 					$tmp_time = array (
 							$each_time ['type'] => $each_time ['from']
 					); // Ex: Chia nho phong => 0
-					array_push ( $tmp_data [$data ['type_name']], $tmp_time );
+					$tmp_video [$data ['type_name']] [$each_time ['type']] = $each_time ['from'];
 				}
-				array_push ( $tmp_video, $tmp_data );
 			}
 			$response ['time_video'] = $tmp_video;
 			unset ( $tmp_furniture );
@@ -241,11 +237,8 @@ $app->get ( '/sync', function () use ($app) {
 			$tmp_news = $tmp_response ['news'];
 			$tmp_webview = array ();
 			foreach ( $tmp_news ['data'] as $data ) {
-				$tmp_url = array ();
-				$tmp_url [$data ['name']] = $data ['url'];
+				$tmp_webview [$data ['name']] = $data ['url'];
 
-				array_push ( $tmp_webview, $tmp_url );
-				// $tmp_webview [$data ['name']] = $data ['url'];
 			}
 			$response ['webview'] = $tmp_webview;
 			unset ( $tmp_news );
@@ -260,11 +253,7 @@ $app->get ( '/sync', function () use ($app) {
 					foreach ( $step_2 ['children'] as $children ) {
 						foreach ( $children ['next_step_3'] as $step_3 ) {
 							if ($step_3 ['image'] != null) {
-
-								$tmp_image = array ();
-								$tmp_image [$step_3 ['key']] = $step_3 ['image'];
-								array_push ( $tmp_photo, $tmp_image );
-								// $tmp_photo [$step_3 ['key']] = $step_3 ['image'];
+								$tmp_photo [$step_3 ['key']] = $step_3 ['image'];
 							}
 						}
 					}
