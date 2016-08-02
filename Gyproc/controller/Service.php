@@ -109,10 +109,13 @@ $app->post ( '/info/add', function () use ($app) {
 					throw new PDOException ( "Cannot add new user" );
 				}
 			} else {
+				$userinfo [0] ['id_device'] = $idDevice;
 				foreach ( $user as $key => $value ) {
 					$userinfo [0] [$key] = $value;
 				}
-				$updateResult = MySqlConnection::$database->update ( 'userinfo', $userinfo [0] );
+				$updateResult = MySqlConnection::$database->update ( 'userinfo', $userinfo [0], array (
+						'email' => $user ['email']
+				) );
 				if ($updateResult == false) {
 					throw new PDOException ( "Cannot update user info" );
 				}
