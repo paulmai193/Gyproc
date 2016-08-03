@@ -68,8 +68,12 @@ $app->get ( '/user(/)(:type/?)(:id/?)', function ($type = null, $id = null) {
 // Add new user
 $app->post ( '/info/add', function () use ($app) {
 	$content = json_decode ( $app->request ()->getBody (), true );
-	$user = $content ['user'];
 	$device = $content ['device'];
+	if (array_key_exists ( 'user', $content )) {
+		$user = $content ['user'];
+	} else {
+		$user = null;
+	}
 
 	try {
 		$response = array ();
