@@ -207,7 +207,7 @@ $app->get ( '/sync', function () use ($app) {
 			// get data from url
 			$ch = curl_init ();
 
-			curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/update.php' );
+			curl_setopt ( $ch, CURLOPT_URL, 'http://' . $_SERVER ['HTTP_HOST'] . '/load/update.php' );
 			curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
 
 			$result = curl_exec ( $ch );
