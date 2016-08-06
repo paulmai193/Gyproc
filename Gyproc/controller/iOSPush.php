@@ -77,6 +77,7 @@ class iOSPush {
 					$result = 'Could not Deliver Message to APNS' . PHP_EOL;
 					break;
 				}
+				error_log ( 'Result push to ' . $token . ' ' . $result );
 			}
 		} elseif (is_string ( $this->tToken )) {
 			$tMsg = chr ( 0 ) . chr ( 0 ) . chr ( 32 ) . pack ( 'H*', $this->tToken ) . pack ( 'n', strlen ( $this->tBody ) ) . $this->tBody;
@@ -89,6 +90,7 @@ class iOSPush {
 			} else {
 				$result = 'Could not Deliver Message to APNS' . PHP_EOL;
 			}
+			error_log ( 'Result push to ' . $token . ' ' . $result );
 		}
 
 		// Close the Connection to the Server.
