@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `userinfo` (
 
 CREATE TABLE IF NOT EXISTS `versioninfo` (
   `source` int(11) NOT NULL DEFAULT '1',
+  `time` datetime NOT NULL,
   PRIMARY KEY (`source`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 

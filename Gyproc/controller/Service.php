@@ -144,56 +144,6 @@ $app->post ( '/info/add', function () use ($app) {
 } );
 
 // Synchronize data from server by version (OLD IMPLEMENT)
-$app->get ( '/sync/old', function () use ($app) {
-	$ver_source = $app->request ()->params ( 'version' );
-
-	$response;
-	try {
-		$cur_ver = MySqlConnection::$database->select ( 'versioninfo', '*' );
-		$cur_ver_source = $cur_ver [0] ['source'];
-		if ($ver_source != $cur_ver_source) {
-
-			// get data from url
-			$ch = curl_init ();
-
-			curl_setopt ( $ch, CURLOPT_URL, 'http://gyproc.akadigital.vn/load/app.php?category=furnitre' );
-			curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
-
-			$result = curl_exec ( $ch );
-
-			curl_close ( $ch );
-
-			// Modify response
-			$response = json_decode ( $result, true );
-			unset ( $response ['resulf'] ); // Unused
-
-			$time = array ();
-			foreach ( $response ['data'] as $data ) {
-				foreach ( $data ['time'] as $each_time ) {
-					array_push ( $time, $each_time ['from'] );
-				}
-			}
-			for($i = 0; $i < sizeof ( $time ); $i ++) {
-				$response ['time_' . $i] = $time [$i];
-			}
-
-			unset ( $response ['data'] );
-		}
-
-		$response ['version'] = $cur_ver [0] ['source'];
-		$response ['error'] = false;
-
-		jsonResponse ( 200, $response );
-	} catch ( Exception $e ) {
-		$response ['error'] = true;
-		$response ['message'] = $e->getMessage ();
-		$response ['detail'] = $e->getTraceAsString ();
-
-		jsonResponse ( 500, $response );
-	}
-} );
-
-// Synchronize data from server by version (NEW IMPLEMENT)
 $app->get ( '/sync', function () use ($app) {
 	$response = array ();
 	try {
@@ -274,6 +224,103 @@ $app->get ( '/sync', function () use ($app) {
 		}
 
 		$response ['version'] = $cur_ver_source;
+		$response ['error'] = false;
+
+		jsonResponse ( 200, $response );
+	} catch ( Exception $e ) {
+		$response ['error'] = true;
+		$response ['message'] = $e->getMessage ();
+		$response ['detail'] = $e->getTraceAsString ();
+
+		jsonResponse ( 500, $response );
+	}
+} );
+
+// Synchronize data from server by version (NEW IMPLEMENT)
+$app->get ( '/sync/new', function () use ($app) {
+	$response = array ();
+	try {
+		// ///// Check version
+		$chk_version = $app->request ()->params ( 'version' );
+		$cur_ver_info = MySqlConnection::$database->select ( 'versioninfo', '*', array (
+				'source' => $chk_version
+		) );
+		$newest_ver_info = MySqlConnection::$database->select ( 'versioninfo', '*' );
+		$last_update = $cur_ver_info [0] ['time'];
+		$newest_ver = $newest_ver_info [sizeof ( $newest_ver_info ) - 1] ['source'];
+
+		// get data from url
+		$ch = curl_init ();
+
+		curl_setopt ( $ch, CURLOPT_URL, 'http://' . $_SERVER ['HTTP_HOST'] . '/load/update.php' );
+		curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, true );
+
+		$result = curl_exec ( $ch );
+
+		curl_close ( $ch );
+
+		// ////////// Work with gyproc response
+		$tmp_response = json_decode ( $result, true );
+
+		// ///// Modify response
+		// // Video
+		$tmp_furniture = $tmp_response ['furnitre'];
+		if ($last_update < $tmp_furniture ['update_time']) {
+			$response ['url_video'] = $tmp_furniture ['url_video'];
+			$tmp_video = array ();
+			foreach ( $tmp_furniture ['data'] as $data ) {
+				$tmp_video [$data ['type_name']] = array (); // Ex: Phong khach
+				$tmp_video [$data ['type_name']] ['begin'] = $data ['time_furnitre'];
+				foreach ( $data ['time'] as $each_time ) {
+					$tmp_time = array (
+							$each_time ['type'] => $each_time ['from']
+					); // Ex: Chia nho phong => 0
+					$tmp_video [$data ['type_name']] [$each_time ['type']] = $each_time ['from'];
+				}
+			}
+			$response ['time_video'] = $tmp_video;
+		}
+		unset ( $tmp_furniture );
+		unset ( $tmp_response ['furnitre'] );
+		// // Done video
+
+		// // Webview
+		$tmp_news = $tmp_response ['news'];
+		if ($last_update < $tmp_news ['update_time']) {
+			$tmp_webview = array ();
+			foreach ( $tmp_news ['data'] as $data ) {
+				$tmp_webview [$data ['name']] = $data ['url'];
+			}
+			$response ['webview'] = $tmp_webview;
+		}
+		unset ( $tmp_news );
+		unset ( $tmp_response ['news'] );
+		// // Done Webview
+
+		// // Photo
+		$tmp_designroom = $tmp_response ['designroom'];
+		if ($last_update < $tmp_designroom ['update_time']) {
+			$tmp_photo = array ();
+			foreach ( $tmp_designroom ['data'] as $data ) {
+				$tmp_photo [$data ['key']] = $data ['image']; // Photo level 1
+				foreach ( $data ['next_step_2'] as $step_2 ) {
+					foreach ( $step_2 ['children'] as $children ) {
+						$tmp_photo [$children ['key']] = $children ['image'];
+						foreach ( $children ['next_step_3'] as $step_3 ) {
+							if ($step_3 ['image'] != null) {
+								$tmp_photo [$step_3 ['key']] = $step_3 ['image'];
+							}
+						}
+					}
+				}
+			}
+			$response ['photo'] = $tmp_photo;
+		}
+		unset ( $tmp_designroom );
+		unset ( $tmp_response ['designroom'] );
+		// // Done photo
+
+		$response ['version'] = $newest_ver;
 		$response ['error'] = false;
 
 		jsonResponse ( 200, $response );
