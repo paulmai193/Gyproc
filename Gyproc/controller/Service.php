@@ -304,9 +304,9 @@ $app->post ( '/push', function () use ($app) {
 		} elseif ($user_filter == 'registered') {
 			// All device with isn't registered by user and filter by role
 			if ($user_role == 'all') {
-				$deviceinfo = MySqlConnection::$database->select ( 'deviceinfo', '*' );
+				$deviceinfo = MySqlConnection::$database->query ( 'select di.* from deviceinfo di where di.id_device in (select ui.id_device from userinfo ui)' )->fetchAll ();
 			} else {
-				$deviceinfo = MySqlConnection::$database->query ( "select di.* from deviceinfo di where di.id_device not in (select ui.id_device from userinfo ui where ui.role like '$user_role')" )->fetchAll ();
+				$deviceinfo = MySqlConnection::$database->query ( "select di.* from deviceinfo di where di.id_device in (select ui.id_device from userinfo ui where ui.role like '$user_role')" )->fetchAll ();
 			}
 		} else {
 			// all

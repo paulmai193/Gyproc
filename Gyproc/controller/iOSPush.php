@@ -49,23 +49,25 @@ class iOSPush {
 		$this->tCert = dirname ( __FILE__ ) . '/../asset/ck.pem';
 	}
 	function sendPush() {
-		$tContext = stream_context_create ();
-		stream_context_set_option ( $tContext, 'ssl', 'local_cert', $this->tCert );
-
-		// Remove this line if you would like to enter the Private Key Passphrase manually.
-		stream_context_set_option ( $tContext, 'ssl', 'passphrase', $this->tPassphrase );
-
-		// Open the Connection to the APNS Server.
-		$tSocket = stream_socket_client ( 'ssl://' . $this->tHost . ':' . $this->tPort, $error, $errstr, 30, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $tContext );
-
-		// Check if we were able to open a socket.
-		if (! $tSocket) {
-			exit ( "APNS Connection Failed: $error $errstr" . PHP_EOL );
-		}
-
-		// Build the Binary Notification.
 		if (is_array ( $this->tToken )) {
+
+			// Build the Binary Notification.
+
 			foreach ( $this->tToken as $token ) {
+				$tContext = stream_context_create ();
+				stream_context_set_option ( $tContext, 'ssl', 'local_cert', $this->tCert );
+
+				// Remove this line if you would like to enter the Private Key Passphrase manually.
+				stream_context_set_option ( $tContext, 'ssl', 'passphrase', $this->tPassphrase );
+
+				// Open the Connection to the APNS Server.
+				$tSocket = stream_socket_client ( 'ssl://' . $this->tHost . ':' . $this->tPort, $error, $errstr, 30, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $tContext );
+
+				// Check if we were able to open a socket.
+				if (! $tSocket) {
+					exit ( "APNS Connection Failed: $error $errstr" . PHP_EOL );
+				}
+
 				$tMsg = chr ( 0 ) . chr ( 0 ) . chr ( 32 ) . pack ( 'H*', $token ) . pack ( 'n', strlen ( $this->tBody ) ) . $this->tBody;
 
 				// Send the Notification to the Server.
@@ -77,9 +79,26 @@ class iOSPush {
 					$result = 'Could not Deliver Message to APNS' . PHP_EOL;
 					break;
 				}
-				error_log ( 'Result push to ' . $token . ' ' . $result );
+
+				// Close the Connection to the Server.
+				fclose ( $tSocket );
+
+				// error_log ( 'Result push to ' . $token . ' ' . $result );
 			}
 		} elseif (is_string ( $this->tToken )) {
+			$tContext = stream_context_create ();
+			stream_context_set_option ( $tContext, 'ssl', 'local_cert', $this->tCert );
+
+			// Remove this line if you would like to enter the Private Key Passphrase manually.
+			stream_context_set_option ( $tContext, 'ssl', 'passphrase', $this->tPassphrase );
+
+			// Open the Connection to the APNS Server.
+			$tSocket = stream_socket_client ( 'ssl://' . $this->tHost . ':' . $this->tPort, $error, $errstr, 30, STREAM_CLIENT_CONNECT | STREAM_CLIENT_PERSISTENT, $tContext );
+
+			// Check if we were able to open a socket.
+			if (! $tSocket) {
+				exit ( "APNS Connection Failed: $error $errstr" . PHP_EOL );
+			}
 			$tMsg = chr ( 0 ) . chr ( 0 ) . chr ( 32 ) . pack ( 'H*', $this->tToken ) . pack ( 'n', strlen ( $this->tBody ) ) . $this->tBody;
 
 			// Send the Notification to the Server.
@@ -90,11 +109,11 @@ class iOSPush {
 			} else {
 				$result = 'Could not Deliver Message to APNS' . PHP_EOL;
 			}
-			error_log ( 'Result push to ' . $token . ' ' . $result );
-		}
+			// Close the Connection to the Server.
+			fclose ( $tSocket );
 
-		// Close the Connection to the Server.
-		fclose ( $tSocket );
+			// error_log ( 'Result push to ' . $token . ' ' . $result );
+		}
 
 		return $result;
 	}
